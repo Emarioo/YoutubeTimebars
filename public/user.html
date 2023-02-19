@@ -1,0 +1,318 @@
+<html>
+    <head>
+        <link rel="icon" href="/favicon.png" type="image/png">
+        <style>
+            html{
+                --textColor: rgb(188, 226, 255);
+                --errorColor:rgb(214, 73, 42);
+                --errorColorFaded:rgb(163, 77, 141);
+
+                font-family: Cambria;
+                color:var(--textColor);
+            }
+            ::-webkit-scrollbar {
+                width: 10px;
+            }
+            ::-webkit-scrollbar-track {
+                background: rgb(29, 33, 58); 
+            }
+            ::-webkit-scrollbar-thumb {
+                background: #109171; 
+            }
+            ::-webkit-scrollbar-thumb:hover {
+                background: #18e7ac; 
+            }
+            body{
+                position: absolute;
+                margin: 0;
+                padding: 0;
+                min-height:100%;
+                min-width:100%;
+                display:flex;
+            }
+            .content {
+                background-color: rgb(29, 33, 58);
+                min-width:100%;
+                min-height:100%;
+            }
+            h1, p {
+                text-align: center;
+            }
+            .video-grid{
+                position: relative;
+                display:table;
+                width:100%;
+            }
+            @media (min-width: 0px)   {.video{--video-per-row: 2;}}
+            @media (min-width: 600px) {.video{--video-per-row: 3;}}
+            @media (min-width: 900px) {.video{--video-per-row: 4;}}
+            @media (min-width: 1200px){.video{--video-per-row: 5;}}
+            .video{
+                position: relative;
+                --video-gap: 2%;
+                /* v*x + (v+1)*g == 100% */
+                width:calc((100% - (var(--video-per-row) + 1) * var(--video-gap)) / var(--video-per-row));
+                margin-left:var(--video-gap);
+                margin-bottom: var(--video-gap); 
+                display:inline-block;
+                transition: 0.1s;
+            }
+            .video:hover{
+                transform: translateY(-5px);
+                transition: 0.3s;
+            }
+            img{
+                display:block;
+                width:100%;
+                height:auto;
+                border-radius: 4px;
+            }
+            a{
+                position: absolute;
+                width:100%;
+                height:100%;
+            }
+            input{
+                --inputw: 30%;
+                font-size: 1em;
+                width:var(--inputw);
+                padding:0.2em;
+                text-align: center;
+                margin:0;
+                margin-left:calc((100% - var(--inputw)) / 2);
+                background-color: rgb(40, 58, 101);
+                border: 0px;
+                color:rgb(255, 231, 214);
+                border-radius: 4px;
+            }
+            input::placeholder{
+                color:rgb(168, 144, 127);
+            }
+            input:hover{
+                background-color: rgb(26, 81, 115);
+            }
+            input:focus{
+                outline: none;
+                background-color: rgb(46, 110, 150);
+            }
+            @keyframes fadeOut {
+                0% {
+                    color:var(--errorColor)
+                }
+                25%{
+                    color:var(--errorColor)
+                }
+                100% {
+                    color:var(--errorColorFaded);
+                }
+            }
+            #p-error {
+                color:var(--errorColorFaded);
+                animation: 4s ease-out 0s 1 fadeOut;
+            }
+
+            .my-duration{
+                position:absolute;
+                background-color:#444;
+                bottom:0px;
+                margin:0px;
+                height:4px;
+                border-bottom-left-radius: 4px;
+                border-bottom-right-radius: 4px;
+            }
+            .my-duration-red{
+                background-color:#d44;
+            }
+        </style>
+        <script src="api.js"></script>
+        <script>
+            // setTimeout(()=>{
+                //     window.location.reload();
+                // },1000);
+                
+            var OPTIONS = {
+                server: "",
+                user: window.location.pathname.substr(1),
+
+                updateRate: 2,
+            }
+            function UpdateTimebar(element,timestamp){
+                // Do you exist?
+                let timebar = element.getElementsByClassName("my-duration-red");
+                if(timebar.length!=0){
+                    timebar = timebar[0];
+                    // should you exist
+                    if(timestamp){
+                        // update existing
+                        let newPercent = Math.floor(100*(timestamp.time/timestamp.duration));
+                        timebar.style.width=newPercent+"%";
+                    }else{
+                        // remove
+                        let del = element.getElementsByClassName("my-duration");
+                        for(let j=0;j<del.length;j++)
+                            del[j].remove();
+                    }
+                }else if(timestamp){
+                    // create new
+                    var divFront = document.createElement("div");
+                    var divBack = document.createElement("div");
+                    divBack.classList.add("my-duration");
+                    divBack.style.width="100%";
+                    divFront.classList.add("my-duration","my-duration-red");
+                    if(timestamp.duration==0)
+                        if(IsDebug(DEBUG_WARNING)) console.log("WARNING duration is 0",timestamp.videoId);
+                    let newPercent = Math.floor(100*(timestamp.time/timestamp.duration));
+                    divFront.style.width=newPercent+"%";
+                    element.appendChild(divBack);
+                    element.appendChild(divFront);
+                }
+            }
+            function AddVideo(timestamp){
+                let list = document.getElementsByClassName("video-grid")[0];
+                
+                let div = document.createElement("div");
+                let img = document.createElement("img");
+                let a = document.createElement("a");
+                div.classList.add("video");
+                a.href = "https://www.youtube.com/watch?v="+timestamp.videoId;
+                a.target = "_blank";
+                img.src = "https://i.ytimg.com/vi/"+timestamp.videoId+"/mqdefault.jpg";
+                
+                UpdateTimebar(div,timestamp);
+
+                div.appendChild(a);
+                div.appendChild(img);
+                list.appendChild(div);
+            }
+            function UrlOptions(href){
+                var options = href.substr(href.lastIndexOf("?")+1).split("&");
+                var object={};
+                for(var i=0;i<options.length;i++){
+                    var set = options[i].split("=");
+                    object[set[0]]=set[1];
+                }
+                return object;
+            }
+            function GetElements(){
+                let map = {};
+                let elems = document.getElementsByClassName("video");
+                for(let i=0;i<elems.length;i++){
+                    if(elems[i].children.length==0){
+                        if(OPTIONS.debugWarning) console.log("Element has no children?");
+                        continue;
+                    }
+                    let element = elems[i].getElementsByTagName("a")[0];
+                    // console.log(elems[i]);
+                    let options = UrlOptions(element.href);
+                    if(options.v==null) continue;
+
+                    let list = map[options.v];
+                    // there can be thumbnails of the same video
+                    if(list) list.push(element);
+                    else map[options.v] = [element];
+                }
+                return map;
+            }
+            function StartUpdate(){
+                updateInterval = setInterval(async ()=>{
+                    if(OPTIONS.updateRate!=-1){
+                        let timestamps = null;
+                        if(OPTIONS.user.length!=0)
+                            await QueryModified(OPTIONS.server,OPTIONS.user);
+                        if(timestamps) {
+                            // console.log("Update",timestamps.length);
+                            let map = GetElements();
+                            for(let i=0;i<timestamps.length;i++){
+                                let timestamp = timestamps[i];
+                                let elements = map[timestamp.videoId];
+                                if(elements){
+                                    for(let j=0;j<elements.length;j++){
+                                        UpdateTimebar(elements[j],timestamp);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },OPTIONS.updateRate*1000);
+            }
+            function Show(valid,invalid){
+                let invalids = document.getElementsByClassName("when-invalid");
+                let valids = document.getElementsByClassName("when-valid");
+                for(let i=0;i<invalids.length;i++){
+                    if(invalid) invalids[i].style.display="";
+                    else invalids[i].style.display="none";
+                }
+                for(let i=0;i<valids.length;i++){
+                    if(valid) valids[i].style.display="";
+                    else valids[i].style.display="none";
+                }
+            }
+            function Login(){
+                let elem = document.getElementById("input-user");
+                if(elem.value.length!=0)
+                    window.location.pathname = "/"+elem.value;
+            }
+            async function Initialize(){
+                let userInput = document.getElementById("input-user");
+                userInput.onkeydown=(e)=>{
+                    if(e.key=="Enter")
+                        Login();
+                }
+                if(OPTIONS.user.length==0){
+                    let userId = localStorage.getItem("ytTimebarsUser");
+                    if(userId){
+                        window.location.pathname = "/"+userId;
+                    }
+                }
+
+                let timestamps = null;
+                if(OPTIONS.user.length!=0)
+                    timestamps = await QueryModified(OPTIONS.server,OPTIONS.user);
+                let bad=false;
+                if(timestamps){
+                    bad = timestamps.length==0;
+                }else{
+                    bad=true;
+                }
+                if(bad){
+                    if(OPTIONS.user.length==0){
+                        let p = document.getElementById("p-error");
+                        p.style.display = "none";
+                    }
+                    localStorage.removeItem("ytTimebarsUser",null);
+                    Show(false,true);
+                    // userInput.value = window.location.pathname.substr(1);
+                }else{
+                    localStorage.setItem("ytTimebarsUser",OPTIONS.user);
+                    Show(true,false);
+                    for(let i=0;i<timestamps.length;i++){
+                        AddVideo(timestamps[i]);
+                    }
+                }
+                
+                StartUpdate();
+            }
+            window.onload = Initialize;
+            window.onfocus = ()=>{
+
+            }
+            window.onblur = ()=>{
+
+            }
+        </script>
+    </head>
+    <body>
+        <div class="content">
+            <h1>Time bars!</h1>
+            <div class="when-valid" style="display:none;">
+                <p>A new tab will be opened when you click a video</p>
+                <div class="video-grid">
+                </div>
+            </div>
+            <div class="when-invalid" style="display:none;">
+                <p id="p-error">User ID was invalid or the user doesn't have any time bars</p>
+                <input id="input-user" placeholder="User ID" onblur="Login()">
+            </div>
+        </div>
+    </body>
+</html>

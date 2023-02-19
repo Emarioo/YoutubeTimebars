@@ -1,0 +1,54 @@
+<html>
+    <body>
+        <script>
+            async function doQuery(){
+                let vidid = document.getElementById("vidinput").value;
+                if(vidid.length==0)
+                    return;
+                let res = await fetch('/query',{
+                    method:'POST',
+                    headers:{
+                        'Content-Type':'application/json'
+                    },
+                    body:JSON.stringify({
+                        userId: "Emario",
+                        videoId: vidid
+                    }),
+                })
+
+                if(!res.ok) return;
+
+                console.log("Received:",res);
+            }
+            function doInsert(){
+                let vidid = document.getElementById("vidinput").value;
+                if(vidid.length==0)
+                    return;
+                fetch('/insert',{
+                    method:'POST',
+                    headers:{
+                        'Content-Type':'application/json'
+                    },
+                    body:JSON.stringify({
+                        userId: "Emario",
+                        timestamp: {
+                            videoId: vidid,
+                            time: Math.floor(Math.random()*1000),
+                            duration: 1000,
+                            lastModified: (Date.now()/(1000)-60*60*24*365*50)
+                        }
+                    }),
+                });
+                // .then((res)=>res.json()).then((data)=>{
+                //     console.log("Received: ",data);
+                // });
+            }
+            // setTimeout(()=>{
+                
+            // },200);
+        </script>
+        <input id="vidinput" type="text" value="vid100"><br>
+        <button onclick="doQuery()">Query</button>
+        <button onclick="doInsert()">Insert</button>
+    </body>
+</html>
