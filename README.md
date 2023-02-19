@@ -1,4 +1,4 @@
-# YoutubeTimebars
+# Youtube Time bars!
 Time bars for youtube!
 Note that you need to setup a server for this to work.
 You can setup one locally. More info below.
@@ -10,7 +10,7 @@ You can setup one locally. More info below.
 - You can see all your saved videos when logging in to the web server. (https://serverip/username)
 
 ## Coming soon?
-- An official server. (you would just need an initial script)
+- An official server. (let someone else host the server!)
 - Time bars saved locally if server is unavailable. (no server needed!)
 
 ## Notes
@@ -26,12 +26,13 @@ NodeJS server communicates between the script to insert and query time bars.
 ## Local server setup
 - Install NodeJS
 - Download code or clone repository
-- Run "node server.js YourPort". Server should now be running. Test by going to "https://localhost:YourPort".
+- Run "node server.js YourPort". Server should now be running. Test by going to https://localhost:YourPort.
 
 ## Script setup
 - Install/enable tampermonkey chrome extension
 - Go to dashboard and create a new script (you may need to look around a little for it, google how tampermonkey works if you are unsure)
-- Copy code in tamper.js and paste into the new script in tampermonkey
+- Copy code in bootscript.js and paste into the new script in tampermonkey
+- There are some options in the script which you may want to change.
 - Go to www.youtube.com and see if tampermonkey and the script is enabled.
 
 ## It didn't work ):
