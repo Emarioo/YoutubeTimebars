@@ -3,6 +3,10 @@ Time bars for youtube!
 Note that you need to setup a server for this to work.
 You can setup one locally. More info below.
 
+## Warning
+I am not sure how well the security on the scripts hold up. Could be really bad.
+If you are doing things locally then it is probably fine.
+The chrome extension that's on it's way is currently very much **not** safe. 
 
 ## Features
 - Resume video where you left off.

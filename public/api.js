@@ -140,7 +140,7 @@ function StartServerPinging() {
             isPinging = false;
         } else {
             pingDelay *= 2;
-            pingFails++;
+            pingAttempts++;
             if (pingDelay > MAX_PING_DELAY) {
                 pingDelay = MAX_PING_DELAY;
             }

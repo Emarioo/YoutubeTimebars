@@ -1,6 +1,6 @@
 var SCRIPT_OPTIONS = null;
 
-console.log("loaded script content")
+// console.log("loaded script content")
 
 var updateInterval = null;
 var updateRate = 0;
@@ -89,7 +89,8 @@ function ValidateOptions(options) {
     
     return options;
 }
-function Initialize(options){
+function Initialize(options) {
+    // console.log("Initialize")
     if (SCRIPT_OPTIONS !=null){
         console.log("SCRIPT_OPTIONS has already been set!")
         return;
@@ -116,7 +117,9 @@ function Initialize(options){
         }
         `;
     document.body.appendChild(styles);
-
+        
+    // Initialize2();
+    
     // Load API script
     let apiJS = document.createElement("script");
     apiJS.src=SCRIPT_OPTIONS.server+"/api.js";
@@ -126,7 +129,7 @@ function Initialize(options){
 }
 function Initialize2() {
     InitializeAPI(SCRIPT_OPTIONS);
-    
+    // console.log("INIT WEE")
     document.addEventListener('yt-page-data-updated', OnPageUpdate);
     if(GetPlayer()!=null){
         GetPlayer().addEventListener("onStateChange", OnStateChange);
@@ -195,15 +198,27 @@ function GetPageType(){
 function SetPageType(type){
     currentPageType = type;
 }
+function GetCurrentTime() {
+    var elems = document.getElementsByClassName("ytp-time-current");
+    if (elems.length == 0) return 0;
+    let split = elems[0].innerText.split(":");
+    return parseInt(split[0]) * 60 + parseInt(split[1]);
+}
+function GetDuration() {
+    var elems = document.getElementsByClassName("ytp-time-duration");
+    if (elems.length == 0) return 0;
+    let split = elems[0].innerText.split(":");
+    return parseInt(split[0]) * 60 + parseInt(split[1]);
+}
 // This is not an api function because it is often used and you would need to pass in server, user and timestamp.
-async function InsertTimestamp2(){
-    let timestamp = new Timestamp(UrlOptions(GetPlayer().getVideoUrl()).v,GetPlayer().getCurrentTime(),GetPlayer().getDuration(),GetModifiedTime());
+async function InsertTimestamp2() {
+    let timestamp = new Timestamp(UrlOptions(location.href).v,GetCurrentTime(),GetDuration(),GetModifiedTime());
     
     // don't save short videos
     if(timestamp.duration<SCRIPT_OPTIONS.minVideoDuration)
         return;
 
-    InsertTimestamp(SCRIPT_OPTIONS, timestamp);
+    InsertTimestamp(timestamp);
 }
 function GetElements(){
     let map = {};
@@ -281,7 +296,9 @@ function UpdateTimestamps(){
     }
 }
 
-function OnPageUpdate(e){
+function OnPageUpdate(e) {
+    if (e.detail==null)
+        return;
     let pageType = e.detail.pageType;
     SetPageType(pageType);
     // UpdateTimestamps();

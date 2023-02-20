@@ -15,6 +15,7 @@ var OPTIONS = {
 // ###################
 //   Libraries and setup
 // ###################
+const https = require('https')
 const express = require('express')
 const bodyParser = require('body-parser');
 const fs = require('fs');
@@ -403,11 +404,13 @@ app.post('/query',(req,res)=>{
     let userId = req.body.userId;
     let videoId = req.body.videoId;
     
-    if(!IsUserValid(userId)){
+    if (!IsUserValid(userId)) {
+        console.log("bad userid",userId);
         res.sendStatus(403);
         return;
     }
-    if(!IsVideoValid(videoId)){
+    if (!IsVideoValid(videoId)) {
+        console.log("bad vidid",videoId);
         res.sendStatus(403);
         return;
     }
@@ -446,11 +449,13 @@ app.post('/insert',(req,res)=>{
     let userId = req.body.userId;
     let timestamp = req.body.timestamp;
 
-    if(!IsUserValid(userId)){
+    if (!IsUserValid(userId)) {
+        console.log("bad userid", userId);
         res.sendStatus(403);
         return;
     }
-    if(!IsTimestampValid(timestamp)){
+    if (!IsTimestampValid(timestamp)) {
+        console.log("bad timestamp", timestamp);
         res.sendStatus(403);
         return;
     }
@@ -471,10 +476,19 @@ setInterval(()=>{
 if(process.argv.length>=3){
     OPTIONS.port = parseInt(process.argv[2]); // arg0 is node.exe, arg1 is server.js
 }
-
-let server = app.listen(OPTIONS.port, () => {
-    console.log('Listening on port ' + OPTIONS.port)
-})
+let server;
+if (fs.existsSync("key.pem") && fs.existsSync("cert.pem")) {
+    server = https.createServer({
+        key: fs.readFileSync("key.pem"),
+        cert: fs.readFileSync("cert.pem")
+    }, app).listen(OPTIONS.port, () => {
+        console.log('Listening on port ' + OPTIONS.port);
+    })
+} else {
+    server = app.listen(OPTIONS.port, () => {
+        console.log('Listening on port ' + OPTIONS.port);
+    });
+}
 server.on("close",OnClose);
 function OnClose(){
     database.save();

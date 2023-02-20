@@ -1,0 +1,47 @@
+{
+    "manifest_version": 3,
+    "name": "Youtube Time Bars",
+    "description": "Base Level Extension",
+    "version": "1.0",
+    "icons": {
+        
+    },
+    // "background":{
+    //     "service_worker":"background.js"   
+    // },
+    "action": {
+        "default_popup": "hello.html",
+        "default_icon": "img.png"
+    },
+    "permissions":[
+        "storage"
+        // "scripting",
+        // "tabs",
+        // "activeTab"
+    ],
+    "host_permissions":[
+        "<all_urls>"
+    ],
+    "content_scripts":[
+     {
+        "js":["content.js","script.js","api.js"],
+        "matches":[
+            // "https://www.youtube.com/*"
+            "https://*/*"
+        ]
+     }
+    ]
+    // ,
+    // "web_accessible_resources": [
+    //     {
+    //         "resources": [
+    //             "script.js",
+    //             "api.js",
+    //             "background.js"
+    //         ],
+    //         "matches": [
+    //             "<all_urls>"
+    //         ]
+    //     }
+    // ]
+}
