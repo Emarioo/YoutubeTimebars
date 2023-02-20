@@ -1,0 +1,4 @@
+- __2022-02-15__ Just did some tests and it seems to work really well.
+- The safest way to remove timestamps is to ignore them when loading. Ignoring happens when time is close to duration. Since you can have multiple session, a removal from on session won't delete from the other.
+- __2022-02-16__ Finished the visual bar on videos and some bugs when saving timestamps. The real testing starts now.
+- **2023-02-18** Started work on a web server for version 3.0. The script could use some changes to simplify things.

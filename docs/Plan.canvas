@@ -1,0 +1,18 @@
+{
+	"nodes":[
+		{"id":"bb3cf53140a5c086","x":-562,"y":-250,"width":250,"height":60,"type":"text","text":"Database (just text files)"},
+		{"id":"d5c68596ab6f44f8","x":-765,"y":-109,"width":250,"height":174,"type":"text","text":"# users.txt\nemarioo - 0\nyou - 1\nhello - 3"},
+		{"id":"45ce5cb2dbc13678","x":-357,"y":-79,"width":250,"height":60,"type":"text","text":"0.txt"},
+		{"id":"50e915fc8fe4ce5c","x":-357,"y":148,"width":250,"height":60,"type":"text","text":"3.txt"},
+		{"id":"19ade068e997ad44","x":-357,"y":35,"width":250,"height":60,"type":"text","text":"1.txt"},
+		{"id":"75042b9dc8fa9d00","x":377,"y":-190,"width":250,"height":60,"type":"text","text":"Script"},
+		{"id":"e30ed0a618cbc4c2","x":-251,"y":-445,"width":250,"height":60,"type":"text","text":"Server"}
+	],
+	"edges":[
+		{"id":"04284da1584a7b84","fromNode":"bb3cf53140a5c086","fromSide":"bottom","toNode":"d5c68596ab6f44f8","toSide":"top"},
+		{"id":"b3746b49f7a9cb59","fromNode":"bb3cf53140a5c086","fromSide":"bottom","toNode":"45ce5cb2dbc13678","toSide":"left"},
+		{"id":"d49569ebcecf28a6","fromNode":"bb3cf53140a5c086","fromSide":"bottom","toNode":"19ade068e997ad44","toSide":"left"},
+		{"id":"1beb3775bd77837b","fromNode":"bb3cf53140a5c086","fromSide":"bottom","toNode":"50e915fc8fe4ce5c","toSide":"left"},
+		{"id":"acca4b83ec397c20","fromNode":"e30ed0a618cbc4c2","fromSide":"bottom","toNode":"bb3cf53140a5c086","toSide":"top"}
+	]
+}

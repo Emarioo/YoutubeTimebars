@@ -1,18 +1,18 @@
-var OPTIONS = null;
+var SCRIPT_OPTIONS = null;
 
 var updateInterval = null;
 var updateRate = 0;
 function StartUpdate(){
-    if(OPTIONS.updateRate==-1)
+    if(SCRIPT_OPTIONS.updateRate==-1)
         updateRate = 10;
     else{
-        if(OPTIONS.updateRate<1)
-            OPTIONS.updateRate=1;
-            updateRate = OPTIONS.updateRate;
+        if(SCRIPT_OPTIONS.updateRate<1)
+            SCRIPT_OPTIONS.updateRate=1;
+            updateRate = SCRIPT_OPTIONS.updateRate;
     }
     updateInterval = setInterval(async ()=>{
-        if(OPTIONS.updateRate!=-1){
-            let timestamps = await QueryModified(OPTIONS.server,OPTIONS.user);
+        if(SCRIPT_OPTIONS.updateRate!=-1){
+            let timestamps = await QueryModified(SCRIPT_OPTIONS.server,SCRIPT_OPTIONS.user);
             if(timestamps) {
                 // console.log("Update",timestamps.length);
                 let map = GetElements();
@@ -28,7 +28,7 @@ function StartUpdate(){
             }
         }
 
-        if((OPTIONS.updateRate==-1&&updateRate!=10)||(OPTIONS.updateRate!=-1&&updateRate!=OPTIONS.updateRate)){
+        if((SCRIPT_OPTIONS.updateRate==-1&&updateRate!=10)||(SCRIPT_OPTIONS.updateRate!=-1&&updateRate!=SCRIPT_OPTIONS.updateRate)){
             clearInterval(updateInterval);
             StartUpdate();
         }
@@ -38,67 +38,66 @@ function StartUpdate(){
 var saveInterval = null;
 var saveRate = 0;
 function StartSave(){
-    if(OPTIONS.saveRate==-1)
+    if(SCRIPT_OPTIONS.saveRate==-1)
         saveRate = 10;
     else{
-        if(OPTIONS.saveRate<1)
-            OPTIONS.saveRate=1;
-        saveRate = OPTIONS.saveRate;
+        if(SCRIPT_OPTIONS.saveRate<1)
+            SCRIPT_OPTIONS.saveRate=1;
+        saveRate = SCRIPT_OPTIONS.saveRate;
     }
     saveInterval = setInterval(()=>{
-        if(OPTIONS.saveRate!=-1){
+        if(SCRIPT_OPTIONS.saveRate!=-1){
             if(GetPageType()=="watch"){
-                InsertTimestamp();
+                InsertTimestamp2();
             }
         }
         
-        if((OPTIONS.saveRate==-1&&saveRate!=10)||(OPTIONS.saveRate!=-1&&saveRate!=OPTIONS.saveRate)){
+        if((SCRIPT_OPTIONS.saveRate==-1&&saveRate!=10)||(SCRIPT_OPTIONS.saveRate!=-1&&saveRate!=SCRIPT_OPTIONS.saveRate)){
             clearInterval(saveInterval);
             StartSave();
         }
     },saveRate*1000);
 }
 
-var serverIsOnline = false;
-function IsServerOnline(){
-    return serverIsOnline;
+function ValidateOptions(options) {
+    if (options == null || typeof options != "object") {
+        options = {};   
+    }
+    if (options.server == undefined) {
+        console.log("Missing SCRIPT_OPTIONS.server");
+        return null;
+    }
+    if (options.user == undefined) {
+        console.log("Missing SCRIPT_OPTIONS.user");
+        return null;
+    }
+    
+    if (options.saveRate == undefined)
+        options.saveRate = 2;
+    if (options.updateRate == undefined)
+        options.updateRate = 2;
+    if (options.videoMinDuration == undefined)
+        options.videoMinDuration = 60;
+    if (options.debugError == undefined)
+        options.debugError = true;
+    if (options.debugWarning == undefined)
+        options.debugWarning = true;
+    if (options.debugInfo == undefined)
+        options.debugInfo = false;
+    
+    return options;
 }
-var isPinging=false;
-var pingDelay=2;
-const MAX_PING_DELAY = 30;
-function StartServerPinging(){
-    if(isPinging) return;
-    isPinging = true;
-    serverIsOnline = false;
-    setTimeout(async ()=>{
-        let success = await PingServer(OPTIONS.server);
-        if(success){
-            serverIsOnline=true;
-            isPinging=false;
-        }else{
-            pingDelay*=2;
-            if(pingDelay>MAX_PING_DELAY){
-                pingDelay=MAX_PING_DELAY;
-            }
-            isPinging=false;
-
-            StartServerPinging();
-        }
-    },pingDelay*1000);
-}
-
 function Initialize(options){
-    // Todo: validate options
-
-    if(OPTIONS!=null){
-        console.log("Options has already been set!")
+    if (SCRIPT_OPTIONS !=null){
+        console.log("SCRIPT_OPTIONS has already been set!")
         return;
     }
-    OPTIONS = options;
-
-    StartServerPinging();
-
-    if(OPTIONS.debugInfo)
+    SCRIPT_OPTIONS = ValidateOptions(options);
+    if (SCRIPT_OPTIONS == null) {
+        return;
+    }
+    
+    if(SCRIPT_OPTIONS.debugInfo)
         console.log("Initializing timestamps");
     
     var styles = document.createElement("style");
@@ -118,13 +117,14 @@ function Initialize(options){
 
     // Load API script
     let apiJS = document.createElement("script");
-    apiJS.src=OPTIONS.server+"/api.js";
+    apiJS.src=SCRIPT_OPTIONS.server+"/api.js";
     document.body.appendChild(apiJS);
 
     apiJS.onload=Initialize2;
 }
-function Initialize2(){
-
+function Initialize2() {
+    InitializeAPI(SCRIPT_OPTIONS);
+    
     document.addEventListener('yt-page-data-updated', OnPageUpdate);
     if(GetPlayer()!=null){
         GetPlayer().addEventListener("onStateChange", OnStateChange);
@@ -157,10 +157,10 @@ class Timestamp {
     }
 }
 function UrlOptions(href){
-    var options = href.substr(href.lastIndexOf("?")+1).split("&");
+    var SCRIPT_OPTIONS = href.substr(href.lastIndexOf("?")+1).split("&");
     var object={};
-    for(var i=0;i<options.length;i++){
-        var set = options[i].split("=");
+    for(var i=0;i<SCRIPT_OPTIONS.length;i++){
+        var set = SCRIPT_OPTIONS[i].split("=");
         object[set[0]]=set[1];
     }
     return object;
@@ -170,9 +170,10 @@ async function SetVideoTimestamp(){
     if(!videoId)
         return;
 
-    let timestamp = await QueryTimestamp(OPTIONS.server,OPTIONS.user,videoId);
-    if(!timestamp){
-        console.log("bad timestamp href:",location.href,"id:",videoId);
+    let timestamp = await QueryTimestamp(SCRIPT_OPTIONS.server,SCRIPT_OPTIONS.user,videoId);
+    if (!timestamp) {
+        if(SCRIPT_OPTIONS.debugInfo)
+            console.log("Time bar '"+videoId+"' not found");
 
         return;
     }
@@ -193,45 +194,31 @@ function SetPageType(type){
     currentPageType = type;
 }
 // This is not an api function because it is often used and you would need to pass in server, user and timestamp.
-async function InsertTimestamp(){
+async function InsertTimestamp2(){
     let timestamp = new Timestamp(UrlOptions(GetPlayer().getVideoUrl()).v,GetPlayer().getCurrentTime(),GetPlayer().getDuration(),GetModifiedTime());
     
     // don't save short videos
-    if(timestamp.duration<OPTIONS.minVideoDuration)
+    if(timestamp.duration<SCRIPT_OPTIONS.minVideoDuration)
         return;
 
-    if(OPTIONS.debugInfo) console.log("Insert",timestamp.videoId);
-    let res = await fetch(OPTIONS.server+'/insert',{
-        method:'POST',
-        headers:{
-            'Content-Type':'application/json'
-        },
-        body:JSON.stringify({
-            userId: OPTIONS.user,
-            timestamp: timestamp,
-        }),
-    });
-    
-    if(!res.ok){
-        if(OPTIONS.debugError) console.log("Insert bad response?",res);
-    }
+    InsertTimestamp(SCRIPT_OPTIONS, timestamp);
 }
 function GetElements(){
     let map = {};
     let elems = document.getElementsByTagName("ytd-thumbnail");
     for(let i=0;i<elems.length;i++){
         if(elems[i].children.length==0){
-            if(OPTIONS.debugWarning) console.log("Element has no children?");
+            if(SCRIPT_OPTIONS.debugWarning) console.log("Element has no children?");
             continue;
         }
         let element = elems[i].children[0];
-        let options = UrlOptions(element.href);
-        if(options.v==null) continue;
+        let SCRIPT_OPTIONS = UrlOptions(element.href);
+        if(SCRIPT_OPTIONS.v==null) continue;
 
-        let list = map[options.v];
+        let list = map[SCRIPT_OPTIONS.v];
         // there can be thumbnails of the same video
         if(list) list.push(element);
-        else map[options.v] = [element];
+        else map[SCRIPT_OPTIONS.v] = [element];
     }
     return map;
 }
@@ -272,18 +259,21 @@ function UpdateTimebar(element,timestamp){
 function UpdateTimestamps(){
     let elems = document.getElementsByTagName("ytd-thumbnail");
     
-    if(OPTIONS.debugInfo)console.log("Updating ",elems.length);
+    if(SCRIPT_OPTIONS.debugInfo)console.log("Updating ",elems.length);
 
     for(let i=0;i<elems.length;i++){
         if(elems[i].children.length==0){
-            if(OPTIONS.debugWarning) console.log("Element has no children?");
+            if(SCRIPT_OPTIONS.debugWarning) console.log("Element has no children?");
             continue;
         }
         let element = elems[i].children[0];
-        let options = UrlOptions(element.href);
-        if(options.v!=null){
-            QueryTimestamp(OPTIONS.server,OPTIONS.user,options.v).then(timestamp=>{
-                UpdateTimebar(element,timestamp);
+        let SCRIPT_OPTIONS = UrlOptions(element.href);
+        if(SCRIPT_OPTIONS.v!=null){
+            QueryTimestamp(SCRIPT_OPTIONS.server,SCRIPT_OPTIONS.user,SCRIPT_OPTIONS.v).then(timestamp=>{
+                if (IsServerOnline())
+                    // UpdateTimebar will remove time bar if timestamp is null which it should if timestamp doesn't exist.
+                    // But timestamp could also be null if server wasn't reached. If so we want to do anything.
+                    UpdateTimebar(element, timestamp);
             });
         }
     }
@@ -301,12 +291,12 @@ function OnPageUpdate(e){
 function OnStateChange(state){
     let vidtime = GetVideoTime();
     if((state==-1&&vidtime!=0)||state==2){ // save when leaving or pausing
-        InsertTimestamp();
+        InsertTimestamp2();
     }
 }
 function Terminate(){
-    // if(OPTIONS.debugInfo) console.log("Terminate");
+    // if(SCRIPT_OPTIONS.debugInfo) console.log("Terminate");
     if(GetPageType()=="watch"){
-        InsertTimestamp();
+        InsertTimestamp2();
     }
 }

@@ -1,17 +1,19 @@
 // ############
 //   SETTINGS
 // ############
-// seconds
-const DATABASE_AUTOSAVE=60
-const DEFAULT_PORT = 8080
 
-const ERROR = 1
-const WARNING = 2
-const INFO = 4
-var debugLevel = ERROR|WARNING|INFO
+var OPTIONS = {
+    port: 8080,
+    // seconds
+    databaseSaveRate: 60,
+    
+    debugError: true,
+    debugWarning: true,
+    debugInfo: false
+};
 
 // ###################
-//   Libraries some setup
+//   Libraries and setup
 // ###################
 const express = require('express')
 const bodyParser = require('body-parser');
@@ -22,10 +24,6 @@ const app = express()
 
 app.use(bodyParser.json());
 app.use(cors());
-
-function DEBUG_ERROR(){     return (debugLevel&ERROR)!=0;}
-function DEBUG_WARNING(){   return (debugLevel&WARNING)!=0;}
-function DEBUG_INFO(){      return (debugLevel&INFO)!=0;}
 
 function GetSystemSeconds(){
     return Date.now()/(1000)-60*60*24*365*50;
@@ -95,6 +93,10 @@ function IsTimestampValid(timestamp){
     if(typeof timestamp.duration != "number") return false;
     if(typeof timestamp.lastModified != "number") return false;
 
+    timestamp.time = Math.floor(timestamp.time);
+    timestamp.duration = Math.floor(timestamp.duration);
+    timestamp.lastModified = Math.floor(timestamp.lastModified);
+    
     return true;
 }
 function IsVideoValid(videoId){
@@ -214,7 +216,7 @@ class Database {
                 // only update if new timestamp is newer
                 if(t.lastModified<=timestamp.lastModified){
                     if(t.duration!=timestamp.duration){
-                        if(DEBUG_WARNING())console.log("[Warning] Duration "+t.duration+" of '"+t.videoId+"' does not match inserted duration "+timestamp.duration);
+                        if(OPTIONS.debugWarning)console.log("[Warning] Duration "+t.duration+" of '"+t.videoId+"' does not match inserted duration "+timestamp.duration);
                         t.duration = timestamp.duration;
                     }
                     t.time = timestamp.time;
@@ -228,7 +230,7 @@ class Database {
                     
                     return;
                 }else{
-                    if(DEBUG_WARNING()) console.log("[Warning] Skipping insert of '"+timestamp.videoId+"' (lastMod: "+t.lastModified+", newMod: "+timestamp.lastModified+")");
+                    if(OPTIONS.debugWarning) console.log("[Warning] Skipping insert of '"+timestamp.videoId+"' (lastMod: "+t.lastModified+", newMod: "+timestamp.lastModified+")");
                     return;
                 }
             }
@@ -238,25 +240,30 @@ class Database {
         timestamps.push(timestamp);
         user.hasChanged=true;
     }
-    save(force=false){
+    save(force = false) {
+        if (!fs.existsSync(this.root)) {
+            fs.mkdirSync(this.root, { recursive: true });
+        }
+        
         if(this.hasChanged||force){
             let content = "";
             for(let i=0;i<this.users.length;i++){
                 let t = this.users[i];
                 content += t.userId+SPLIT_PROPERTY+t.fileName+SPLIT_OBJECT;
             }
-            let path = this.root+"/users.txt";
+            let path = this.root + "/users.txt";
+            
             try{
                 fs.writeFileSync(path,content,'utf8');
             }catch(err){
-                if(DEBUG_ERROR())console.log("[Error] Cannot save database '"+path+"'");
+                if(OPTIONS.debugError)console.log("[Error] Cannot save database '"+path+"'");
                 // Note: that if user saving failes, save of timestamps will not be attempted.
                 //  This is to keep the database consistent.
                 return;
 
             }
             this.hasChanged=false;
-            if(DEBUG_INFO())Log("Saved database with "+this.users.length+" users");
+            if(OPTIONS.debugInfo)Log("Saved database with "+this.users.length+" users");
         }
         for(let j=0;j<this.users.length;j++){
             let user = this.users[j];
@@ -272,11 +279,11 @@ class Database {
             try{
                 fs.writeFileSync(path,content,'utf8');
             }catch(err){
-                if(DEBUG_ERROR()) console.log("[Error] Cannot save timestamps '"+path+"'");
+                if(OPTIONS.debugError) console.log("[Error] Cannot save timestamps '"+path+"'");
                 return;
             }
             user.hasChanged = false;
-            if(DEBUG_INFO())Log("Saved database with "+user.timestamps.length+" timestamps");
+            if(OPTIONS.debugInfo)Log("Saved database with "+user.timestamps.length+" timestamps");
         }
     }
     loadUsers(){
@@ -286,11 +293,11 @@ class Database {
         try{
             data = fs.readFileSync(path,'utf8');
         }catch(err){
-            if(DEBUG_ERROR())console.log("[Error] Cannot load database '"+path+"'");
+            if(OPTIONS.debugError)console.log("[Error] Cannot load database '"+path+"'");
             return;
         }
         if(this.users.length!=0){
-            if(DEBUG_WARNING())console.log("[Warning] Overwriting database, may have lost "+this.users.length+" users");
+            if(OPTIONS.debugWarning)console.log("[Warning] Overwriting database, may have lost "+this.users.length+" users");
             this.users = []; // rip
         }
         this.nextFileName = 0;
@@ -310,7 +317,7 @@ class Database {
             if(this.nextFileName<=num)
                 this.nextFileName = num + 1;
         }
-        if(DEBUG_INFO()) Log("Loaded database with "+this.users.length+" users");
+        if(OPTIONS.debugInfo) Log("Loaded database with "+this.users.length+" users");
     }
     loadTimestamps(user){
         user.isLoaded=true;
@@ -319,13 +326,13 @@ class Database {
         try{
             data = fs.readFileSync(path,'utf8');
         }catch(err){
-            if(DEBUG_ERROR())
+            if(OPTIONS.debugError)
                 console.log("[Warning] Cannot load user from '"+path+"', is user new?");
             return;
         }
 
         if(user.timestamps.length!=0){
-            if(DEBUG_WARNING()) console.log("[Warning] Overwriting database, may have lost "+user.timestamps.length+" timestamps");
+            if(OPTIONS.debugWarning) console.log("[Warning] Overwriting database, may have lost "+user.timestamps.length+" timestamps");
             user.timestamps = []; // rip
         }
 
@@ -342,7 +349,7 @@ class Database {
             user.timestamps.push(timestamp);
         }
 
-        if(DEBUG_INFO())
+        if(OPTIONS.debugInfo)
             Log("Loaded user with "+user.timestamps.length+" timestamps");
     }
 }
@@ -372,18 +379,18 @@ app.get('/', (req, res) => {
 app.get("*",(req,res)=>{
     // Validate url?
     // console.log("hello ",req.url);
-    let userId = req.url.substr(1); // remove /
-    if(!IsUserValid(userId)){
-        // res.sendStatus(403);
-        // return;
-    }else{
-        let validUser = database.hasUser(userId);
-        if(!validUser){
-            console.log("User '"+userId+"' not found");
-            // res.sendStatus(404);
-            // return;
-        }
-    }
+    // let userId = req.url.substr(1); // remove /
+    // if(!IsUserValid(userId)){
+    //     // res.sendStatus(403);
+    //     // return;
+    // }else{
+    //     let validUser = database.hasUser(userId);
+    //     if(!validUser){
+    //         console.log("User '"+userId+"' not found");
+    //         // res.sendStatus(404);
+    //         // return;
+    //     }
+    // }
     res.sendFile(__dirname+'/public/user.html')
 });
 app.post('/ping',(req,res)=>{
@@ -405,7 +412,7 @@ app.post('/query',(req,res)=>{
 
     let timestamp = database.get(userId,videoId);
     if(timestamp){
-        // if(DEBUG_INFO())console.log("Query '"+video+"' from '"+user+"'");
+        // if(OPTIONS.debugInfo)console.log("Query '"+video+"' from '"+user+"'");
         res.json(timestamp).status(200);
     } else{
         // console.log("Query '"+video+"' was missing");
@@ -426,6 +433,7 @@ app.post('/queryModified',(req,res)=>{
     // console.log(" ok");
     if(typeof lastModified != "number")
         lastModified = 0;
+    lastModified = Math.floor(lastModified);
     // console.log("input:",req.body);
     // console.log("output:",recent);
 
@@ -449,28 +457,26 @@ app.post('/insert',(req,res)=>{
     if(timestamp.time>3) // no point in saving time
         database.insert(userId,timestamp);
 
-    // if(DEBUG_INFO()) console.log("Inserted '"+timestamp.videoId+"' from '"+userId+"',",timestamp);
+    // if(OPTIONS.debugInfo) console.log("Inserted '"+timestamp.videoId+"' from '"+userId+"',",timestamp);
 
     res.sendStatus(200); // has to send back something (thats how http protocol works)
 });
 
 setInterval(()=>{
     database.save();
-},1000*DATABASE_AUTOSAVE);
+},1000*OPTIONS.databaseSaveRate);
 
-var port = DEFAULT_PORT;
 if(process.argv.length>=3){
-    port = parseInt(process.argv[2]); // arg0 is node.exe, arg1 is server.js
+    OPTIONS.port = parseInt(process.argv[2]); // arg0 is node.exe, arg1 is server.js
 }
 
-let server = app.listen(port, () => {
-  console.log('Listening on port '+port)
+let server = app.listen(OPTIONS.port, () => {
+    console.log('Listening on port ' + OPTIONS.port)
 })
 server.on("close",OnClose);
 function OnClose(){
     database.save();
 }
-
 process.on('SIGTERM', () => {
     // console.log("SIGTERM");
     OnClose();
