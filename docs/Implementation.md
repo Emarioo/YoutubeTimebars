@@ -1,3 +1,5 @@
+More details coming later.
+
 ## What is used to make this
 Youtube api, event listener, LocalStorage, tampermonkey
 

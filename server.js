@@ -365,6 +365,7 @@ app.use('/',express.static(__dirname+"/public"));
 app.use(function(req, res, next) {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "*");
+    // res.header("Content-Security-Policy","script-src 'https:://www.youtube.com'");
     next();
 });
 app.get('/', (req, res) => {
@@ -375,6 +376,7 @@ app.get('/', (req, res) => {
 //     console.log(req.url);
     
 //     res.sendFile(__dirname+'/public/script.js');
+
 // })
 app.get("*",(req,res)=>{
     // Validate url?

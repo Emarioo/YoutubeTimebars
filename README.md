@@ -3,6 +3,7 @@ Time bars for youtube!
 Note that you need to setup a server for this to work.
 You can setup one locally. More info below.
 
+
 ## Features
 - Resume video where you left off.
 - See time bar on other videos update in real time.
@@ -12,11 +13,12 @@ You can setup one locally. More info below.
 ## Coming soon?
 - An official server. (let someone else host the server!)
 - Time bars saved locally if server is unavailable. (no server needed!)
+- Chrome extension
 
 ## Notes
 - Tested on computers (Windows 8.1, Windows 10).
 - This is not a chrome extension altough it probably could/should be.
-- See "docs/An overview" for more information.
+- See "docs/An overview" for more information. (the docs is not very organized yet, a lot of scattered thoughts)
 
 # Setup
 ## Local NodeJS server

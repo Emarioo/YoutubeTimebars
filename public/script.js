@@ -1,5 +1,7 @@
 var SCRIPT_OPTIONS = null;
 
+console.log("loaded script content")
+
 var updateInterval = null;
 var updateRate = 0;
 function StartUpdate(){

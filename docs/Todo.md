@@ -27,6 +27,7 @@
 - [x] Move InsertTimestamp into `api.js`.
 - [ ] Rename IsUserValid, IsTimestampValid... to ValidateUser, ValidateTimestamp and if they return null, the validation failed. The functions should also format the values. For example, use Math.floor on numbers.
 - [ ] Use http instead of express. Lightweight and smaller footprint.
+- [ ] Chrome extension instead of tampermonkey
 
 # Optimization/Speed
 - [ ] Store times in binary format. Number would use less memory.
@@ -41,6 +42,8 @@
 - [ ] TEST the system. Become a hacker and break things.
 - [ ] Https?
 - [ ] You do `serverip/userId` to see your time bars. This is not safe. Use a different approach.
+- [ ] Test the filtering and validation of timestamps, videoid, times, user id.
+- [ ] UserID in chrome extension is not safe because it is stored in `storage.sync`. It is not encrypted.
 - [x] Make options fail safe. If you do Initialize(OPTIONS) where OPTIONS is null or a property is then defaults are set.
 
 # Fancy

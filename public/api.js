@@ -108,10 +108,18 @@ function IsServerOnline() {
 }
 var isPinging = false;
 var pingDelay = 2;
+var pingAttempts = 0;
 const MAX_PING_DELAY = 30;
+const MAX_PING_ATTEMPTS = 30;
 function StartServerPinging() {
     if (isPinging) return;
     
+    // This is to prevent spam
+    if (pingAttempts > MAX_PING_ATTEMPTS) {
+        // console.log("Stopped pinging server")
+        return;
+    }
+        
     // console.log("Try pinging server");
     isPinging = true;
     serverIsOnline = false;
@@ -132,6 +140,7 @@ function StartServerPinging() {
             isPinging = false;
         } else {
             pingDelay *= 2;
+            pingFails++;
             if (pingDelay > MAX_PING_DELAY) {
                 pingDelay = MAX_PING_DELAY;
             }
