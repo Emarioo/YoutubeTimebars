@@ -1,6 +1,5 @@
 // ==UserScript==
-// @name         Youtube Time Bars
-// @namespace    http://tampermonkey.net/
+// @name         Youtube Time Bars (min)
 // @version      3.0
 // @description  Script which combined with a server allows you to resume videos where you left off.
 // @author       Emarioo/Dataolsson

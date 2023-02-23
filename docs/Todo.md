@@ -13,6 +13,10 @@
 - [x] Real time refresh rate on thumbnails' time bar. Cool to see the bar go up at a steady rate. Long videos can be updated slower since it is harder to notice a change. Real time change on thumbnails that are played in other tabs. This is difficult since you don't want to query 100 timestamps every 1 second (i tested chrome does not like it). Maybe query changes instead of specific videos? QueryTimestamps, QueryModifiedOnes
 
 # Other
+-[ ] Options for enableCache, forceServerOffline or something.
+- [ ] APITerminate. It should call CacheMerge.
+- [ ] Options, number of pingAttempts
+- [ ] Do a better job on the documentation.
 - [ ] localStorage is used if you queried with a good userId. If you type an empty user id into search href you will use the latest localstorage.
 - [ ] Move some functionality from `script.js` into `api.js` so that `user.html` can use it.
 - [ ] Time bar appears on thumbnails they shouldn't. Why?

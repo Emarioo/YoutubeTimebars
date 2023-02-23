@@ -6,17 +6,19 @@ You can setup one locally. More info below.
 ## Warning
 I am not sure how well the security on the scripts hold up. Could be really bad.
 If you are doing things locally then it is probably fine.
-The chrome extension that's on it's way is currently very much **not** safe. 
+The chrome extension that's on it's way is currently very much **not** safe or properly coded.
 
 ## Features
 - Resume video where you left off.
 - See time bar on other videos update in real time.
+- Time bars/stamps are saved locally if server is unavailable (uses localStorage, be careful when clearing browser data).
+
+## Features when using a server
 - Time bars are saved on a server per user and not per computer. (meaning, they aren't saved locally which allows you to resume from any computer)
 - You can see all your saved videos when logging in to the web server. (https://serverip/userId)
 
 ## Coming soon?
 - An official server. (let someone else host the server!)
-- Time bars saved locally if server is unavailable. (no server needed!)
 - Chrome extension
 
 ## Notes
@@ -42,6 +44,9 @@ The chrome extension that's on it's way is currently very much **not** safe.
 - There are some options in the script which you may want to change.
 - Go to www.youtube.com and see if tampermonkey and the script is enabled.
 - Watch a video half way through. Start watching a different video. Go back to the original and continue where you left off.
+
+## Chrome Extension
+Not working yet.
 
 ## It didn't work ):
 Contact me and I shall help you.
