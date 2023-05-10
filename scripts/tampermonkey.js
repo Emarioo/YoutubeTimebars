@@ -508,7 +508,7 @@ async function SetVideoTimestamp(){
     TrySetTime();
     function TrySetTime() {
         // Note: temporary solution for ignoring music videos
-        let words = ["nightcore", "song", "music", "lyrics", "remix", "cover"];
+        let words = SCRIPT_OPTIONS.blacklist;
         let title = GetTitle();
         if (!title) {
             if (tryLimit == 0)
@@ -746,7 +746,9 @@ function Terminate() {
         
         debugError: true,
         debugWarning: true,
-        debugInfo: false
+        debugInfo: false,
+        
+        blacklist: ["nightcore", "song", "music", "lyrics", "remix", "cover"]
     };
 
     // let script = document.createElement("script");
