@@ -14,10 +14,14 @@
 
         // how often time bars on thumbnails should be saved
         updateRate: 2,
-
+        
+        disablePinging: true,
+        
         debugError: true,
         debugWarning: true,
-        debugInfo: true
+        debugInfo: false,
+        
+        blacklist: ["nightcore", "song", "music", "lyrics", "remix", "cover"]
     };
 
     // let script = document.createElement("script");

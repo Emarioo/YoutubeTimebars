@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Youtube Time Bars
 // @version      3.0
-// @description  Script which combined with a server allows you to resume videos where you left off.
+// @description  Script which allows you to resume videos where you left off.
 // @author       Emarioo/Dataolsson
 // @include      *.youtube.*
 // @run-at       document-body
@@ -65,7 +65,7 @@ async function QueryModified() {
         // if(IsDebug(DEBUG_ERROR)) console.log("Bad",response);
         return null;
     }
-    obj = await res.json();
+    let obj = await res.json();
     lastQueryModified = obj.lastModified;
     return obj.timestamps;
 }
@@ -88,7 +88,7 @@ async function QueryTimestamp(videoId) {
             videoId: videoId
         }),
     }).catch(err=>{
-        if(IsDebug(DEBUG_ERROR)) console.log("ERROR?",err);
+        if(API_OPTIONS.debugError) console.log("ERROR?",err);
     });
     if (res == null) {
         StartServerPinging();
@@ -98,7 +98,7 @@ async function QueryTimestamp(videoId) {
         return null;
     }
     if (!res.ok) {
-        if(IsDebug(DEBUG_ERROR)) console.log("Bad",res);
+        if(API_OPTIONS.debugError) console.log("Bad",res);
         return null;
     }
     return await res.json();
@@ -144,12 +144,16 @@ function CacheInsert(timestamp) {
         let t = API_TIMESTAMP_CACHE[i];
         if (timestamp.videoId == t.videoId) {
             // only update if new timestamp is newer
+            // console.log("suc insert", t, timestamp);
             if (t.lastModified <= timestamp.lastModified) {
                 if (t.duration != timestamp.duration) {
-                    if (API_OPTIONS.debugWarning)
-                        console.log("[Warning] Duration " + t.duration + " of '" + t.videoId + "' does not match inserted duration " + timestamp.duration);
+                    // This is fine no need to log
+                    // if (API_OPTIONS.debugWarning)
+                    //     console.log("[Warning] Duration " + t.duration + " of '" + t.videoId + "' does not match inserted duration " + timestamp.duration);
                     t.duration = timestamp.duration;
                 }
+                if(API_OPTIONS.debugInfo)
+                    console.log("Replacing ",t);
                 t.time = timestamp.time;
                 t.lastModified = timestamp.lastModified;
                 API_CACHE_CHANGED = true;
@@ -179,8 +183,8 @@ function CacheQueryModified() {
     // about synchronization when looking at time bars.
     let max = API_CACHE_QUERY_MODIFIED;
     let list = [];
-    for (let i = timestamps.length - 1; i >= 0; i--) {
-        let t = timestamps[i];
+    for (let i = API_TIMESTAMP_CACHE.length - 1; i >= 0; i--) {
+        let t = API_TIMESTAMP_CACHE[i];
         if (API_CACHE_QUERY_MODIFIED <= t.lastModified) {
             list.push(t);
             if (t.lastModified > max)
@@ -244,6 +248,9 @@ var pingAttempts = 0;
 const MAX_PING_DELAY = 30;
 const MAX_PING_ATTEMPTS = 30;
 function StartServerPinging() {
+    if (API_OPTIONS.disablePinging && pingAttempts != 0) {
+        return;
+    }
     if (isPinging) return;
     
     // This is to prevent spam
@@ -294,17 +301,19 @@ function StartUpdate(){
     else{
         if(SCRIPT_OPTIONS.updateRate<1)
             SCRIPT_OPTIONS.updateRate=1;
-            updateRate = SCRIPT_OPTIONS.updateRate;
+        updateRate = SCRIPT_OPTIONS.updateRate;
     }
     updateInterval = setInterval(async ()=>{
         if(SCRIPT_OPTIONS.updateRate!=-1){
             let timestamps = await QueryModified(SCRIPT_OPTIONS.server,SCRIPT_OPTIONS.user);
-            if(timestamps) {
-                // console.log("Update",timestamps.length);
+            if (timestamps) {
+                if(SCRIPT_OPTIONS.debugInfo)
+                    console.log("Update",timestamps.length);
                 let map = GetElements();
                 for(let i=0;i<timestamps.length;i++){
                     let timestamp = timestamps[i];
                     let elements = map[timestamp.videoId];
+                    // console.log("elems",elements);
                     if(elements){
                         for(let j=0;j<elements.length;j++){
                             UpdateTimebar(elements[j],timestamp);
@@ -323,7 +332,11 @@ function StartUpdate(){
 
 var saveInterval = null;
 var saveRate = 0;
-function StartSave(){
+// var saveDelay = 0;
+// var DelaySave(){
+//     saveDelay = 5;
+// }
+function StartSave() {
     if(SCRIPT_OPTIONS.saveRate==-1)
         saveRate = 10;
     else{
@@ -331,7 +344,9 @@ function StartSave(){
             SCRIPT_OPTIONS.saveRate=1;
         saveRate = SCRIPT_OPTIONS.saveRate;
     }
-    saveInterval = setInterval(()=>{
+    // console.log(SCRIPT_OPTIONS,saveRate);
+    saveInterval = setInterval(() => {
+        // console.log(GetPageType());
         if(SCRIPT_OPTIONS.saveRate!=-1){
             if(GetPageType()=="watch"){
                 InsertTimestamp2();
@@ -385,7 +400,8 @@ function Initialize(options) {
     
     var start = document.getElementById("start");
     if (start == null || timesFailed == 0) {
-        console.log("start failed, retryimg");
+        if(SCRIPT_OPTIONS.debugInfo)
+            console.log("Loaded to quickly, waiting a bit...");
         timesFailed++;
         if (timesFailed < 7) {
             setTimeout(Initialize, 2000);
@@ -428,11 +444,15 @@ async function Initialize2() {
     }
     window.onbeforeunload=Terminate;
     
+    if (location.pathname == "/watch")
+        SetPageType("watch");
+    
     CacheMerge();
 
+    SetVideoTimestamp().catch(err => { console.log(err) });
+    
     UpdateTimestamps().catch(err => { console.log(err)});
 
-    SetVideoTimestamp().catch(err => { console.log(err) });
     StartSave();
     StartUpdate();
 }
@@ -480,9 +500,39 @@ async function SetVideoTimestamp(){
     }
     let time = timestamp.time-3; // -3 to give the user some time to remember where in the video they are
     if(time<0)
-    time=0;
-    // console.log("Set time", time, GetPlayer());
-    GetPlayer().seekTo(time, true);
+        time = 0;
+    if (timestamp.duration-time < 5)
+        time = timestamp.duration - 5;
+    
+    let tryLimit = 50;
+    TrySetTime();
+    function TrySetTime() {
+        // Note: temporary solution for ignoring music videos
+        let words = ["nightcore", "song", "music", "lyrics", "remix", "cover"];
+        let title = GetTitle();
+        if (!title) {
+            if (tryLimit == 0)
+                return;
+            tryLimit--;
+            setTimeout(TrySetTime, 500);
+            return;
+        }
+        title = title.toLowerCase();
+        for (let i = 0; i < words.length; i++) {
+            let pos = title.indexOf(words[i].toLowerCase());
+            if (pos != -1) {
+                if (SCRIPT_OPTIONS.debugInfo) {
+                    console.log("Title matched with '"+words[i]+"' therefore playing from beginning");   
+                }
+                return
+            }
+        }
+    
+        if (SCRIPT_OPTIONS.debugInfo)
+            console.log("Set playtime", time);
+        if (Math.abs(GetCurrentTime() - time) > 0.3)
+            GetPlayer().seekTo(time, true);
+    }
 }
 
 var currentPageType="";
@@ -496,21 +546,72 @@ function SetPageType(type){
     currentPageType = type;
 }
 function GetCurrentTime() {
+    if (GetPlayer().getCurrentTime) {
+        return GetPlayer().getCurrentTime();
+    }
+    // player.getCurrentTime is null when using chrome extension.
+    // The code below is an alternative to aquiring time
     var elems = document.getElementsByClassName("ytp-time-current");
     if (elems.length == 0) return 0;
     let split = elems[0].innerText.split(":");
     return parseInt(split[0]) * 60 + parseInt(split[1]);
 }
+function GetVideoId() {
+    if (GetPlayer().getVideoUrl) {
+        return UrlOptions(GetPlayer().getVideoUrl()).v;
+    }
+    // Todo: location.href and playtime will be desynchronized for a moment when switching video.
+    //      This will result in the time from the previous video being applied to the newly switched video.
+    //      This is a massive bug, you can delay save time/inserttimestamp during the switch.
+    return UrlOptions(location.href).v;
+}
 function GetDuration() {
+    if (GetPlayer().getDuration) {
+        return GetPlayer().getDuration();
+    }
+    // player.getDuration is null when using chrome extension.
+    // The code below is an alternative to aquiring time
     var elems = document.getElementsByClassName("ytp-time-duration");
     if (elems.length == 0) return 0;
     let split = elems[0].innerText.split(":");
     return parseInt(split[0]) * 60 + parseInt(split[1]);
 }
+function GetTitle() {
+    // Todo: not synchronized when switching video. The document doesn't update quick enough
+    //   and as such the title of the previous video is retrieved.
+    let primary_inner = document.getElementById("primary-inner");
+    // console.log(primary_inner);
+    if (!primary_inner) return null;
+
+    let a = primary_inner.getElementsByTagName("h1")[0];
+    if (!a) return null;
+    let b = a.children[0];
+    if (!b) return null;
+    return b.innerText;
+    // let indices = [1, 4, 0, 0, 3, 0];
+    // let titleElement = primary_inner;
+    // for (let i = 0; i < indices.length; i++) {
+    //     if (titleElement) {
+    //         console.log("oof");
+    //         return null;
+    //     }
+    //     titleElement = titleElement.children[i];
+    // }
+    // if (titleElement) {
+    //     console.log("oof");
+    //     return null;
+    // }
+    // let titleElement = primary_inner.children[1].children[4].children[0].children[0].children[3].children[0];
+    // return titleElement.innerText;
+}
 // This is not an api function because it is often used and you would need to pass in server, user and timestamp.
 async function InsertTimestamp2() {
-    let timestamp = new Timestamp(UrlOptions(location.href).v,GetCurrentTime(),GetDuration(),GetModifiedTime());
+    let timestamp = new Timestamp(GetVideoId(), GetCurrentTime(), GetDuration(), GetModifiedTime());
+    if (SCRIPT_OPTIONS.debugInfo) {
+        console.log("Try save, ",timestamp);   
+    }
     
+    // console.log("yeah?",timestamp);
     // don't save short videos
     if(timestamp.duration<SCRIPT_OPTIONS.minVideoDuration)
         return;
@@ -563,7 +664,7 @@ function UpdateTimebar(element,timestamp){
         divBack.style.width="100%";
         divFront.classList.add("my-duration","my-duration-red");
         if(timestamp.duration==0)
-            if(IsDebug(DEBUG_WARNING)) console.log("WARNING duration is 0",timestamp.videoId);
+            if (SCRIPT_OPTIONS.debugWarning) console.log("WARNING duration is 0",timestamp.videoId);
         let newPercent = Math.floor(100*(timestamp.time/timestamp.duration));
         divFront.style.width=newPercent+"%";
         element.appendChild(divBack);
@@ -603,14 +704,16 @@ function OnPageUpdate(e) {
         return;
     let pageType = e.detail.pageType;
     SetPageType(pageType);
-    UpdateTimestamps();
-    // console.log("Page", pageType);
+    // DelaySave();
+    // UpdateTimestamps();
+    if(SCRIPT_OPTIONS.debugInfo)
+        console.log("Page", pageType);
     if(pageType == "watch"){
         SetVideoTimestamp();
     }
 }
 function OnStateChange(state){
-    let vidtime = GetVideoTime();
+    let vidtime = GetCurrentTime();
     if((state==-1&&vidtime!=0)||state==2){ // save when leaving or pausing
         InsertTimestamp2();
     }
@@ -638,10 +741,12 @@ function Terminate() {
 
         // how often time bars on thumbnails should be saved
         updateRate: 2,
-
+        
+        disablePinging: true,
+        
         debugError: true,
         debugWarning: true,
-        debugInfo: true
+        debugInfo: false
     };
 
     // let script = document.createElement("script");

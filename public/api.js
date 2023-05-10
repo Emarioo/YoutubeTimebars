@@ -57,7 +57,7 @@ async function QueryModified() {
         // if(IsDebug(DEBUG_ERROR)) console.log("Bad",response);
         return null;
     }
-    obj = await res.json();
+    let obj = await res.json();
     lastQueryModified = obj.lastModified;
     return obj.timestamps;
 }
@@ -80,7 +80,7 @@ async function QueryTimestamp(videoId) {
             videoId: videoId
         }),
     }).catch(err=>{
-        if(IsDebug(DEBUG_ERROR)) console.log("ERROR?",err);
+        if(API_OPTIONS.debugError) console.log("ERROR?",err);
     });
     if (res == null) {
         StartServerPinging();
@@ -90,7 +90,7 @@ async function QueryTimestamp(videoId) {
         return null;
     }
     if (!res.ok) {
-        if(IsDebug(DEBUG_ERROR)) console.log("Bad",res);
+        if(API_OPTIONS.debugError) console.log("Bad",res);
         return null;
     }
     return await res.json();
@@ -136,12 +136,16 @@ function CacheInsert(timestamp) {
         let t = API_TIMESTAMP_CACHE[i];
         if (timestamp.videoId == t.videoId) {
             // only update if new timestamp is newer
+            // console.log("suc insert", t, timestamp);
             if (t.lastModified <= timestamp.lastModified) {
                 if (t.duration != timestamp.duration) {
-                    if (API_OPTIONS.debugWarning)
-                        console.log("[Warning] Duration " + t.duration + " of '" + t.videoId + "' does not match inserted duration " + timestamp.duration);
+                    // This is fine no need to log
+                    // if (API_OPTIONS.debugWarning)
+                    //     console.log("[Warning] Duration " + t.duration + " of '" + t.videoId + "' does not match inserted duration " + timestamp.duration);
                     t.duration = timestamp.duration;
                 }
+                if(API_OPTIONS.debugInfo)
+                    console.log("Replacing ",t);
                 t.time = timestamp.time;
                 t.lastModified = timestamp.lastModified;
                 API_CACHE_CHANGED = true;
@@ -171,8 +175,8 @@ function CacheQueryModified() {
     // about synchronization when looking at time bars.
     let max = API_CACHE_QUERY_MODIFIED;
     let list = [];
-    for (let i = timestamps.length - 1; i >= 0; i--) {
-        let t = timestamps[i];
+    for (let i = API_TIMESTAMP_CACHE.length - 1; i >= 0; i--) {
+        let t = API_TIMESTAMP_CACHE[i];
         if (API_CACHE_QUERY_MODIFIED <= t.lastModified) {
             list.push(t);
             if (t.lastModified > max)
@@ -236,6 +240,9 @@ var pingAttempts = 0;
 const MAX_PING_DELAY = 30;
 const MAX_PING_ATTEMPTS = 30;
 function StartServerPinging() {
+    if (API_OPTIONS.disablePinging && pingAttempts != 0) {
+        return;
+    }
     if (isPinging) return;
     
     // This is to prevent spam

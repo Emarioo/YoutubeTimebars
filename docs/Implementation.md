@@ -6,7 +6,7 @@ This includes **api.js** and **script.js**.
 ## api.js
 There are 3 sections. **Timestamp modification**, **Cache/Local storage**, **Server availability**. The first section is the public interface. These functions should be used by other scripts. The other two sections are mostly private. Functions like **IsServerOnline** and **CacheMerge** can still be useful outside **api.js**.
 
-Use **APIInitialize** to give the api some options. Most importantly **server address** and **user id**.
+Use **InitializeAPI** to give the api some options. Most importantly **server address** and **user id**.
 
 #### Timestamp modification (public)
 There are three functions which are used to **query**, **insert** or **aquire changed** **timestamps**. If the server is available, these functions interract with it using post requests. If the server is offline, the query, insert... functions call functions from the cache section. These functions replace the functionality of the requests allowing the timestamps and bars to work even without a server!
