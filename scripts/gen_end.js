@@ -21,7 +21,7 @@
         debugWarning: true,
         debugInfo: false,
         
-        blacklist: ["nightcore", "song", "music", "lyrics", "remix", "cover"]
+        blacklist: ["nightcore", "song", "music", "lyrics", "remix", "cover","acapella"]
     };
 
     // let script = document.createElement("script");

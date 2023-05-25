@@ -204,7 +204,7 @@ async function SetVideoTimestamp(){
     if (!timestamp) {
         if(SCRIPT_OPTIONS.debugInfo)
             console.log("Time bar '"+videoId+"' not found");
-
+        safeToInsertNewData = true;
         return;
     }
     let time = timestamp.time-3; // -3 to give the user some time to remember where in the video they are
@@ -233,6 +233,7 @@ async function SetVideoTimestamp(){
                 if (SCRIPT_OPTIONS.debugInfo) {
                     console.log("Title matched with '"+words[i]+"' therefore playing from beginning");   
                 }
+                safeToInsertNewData = true;
                 return
             }
         }
@@ -241,6 +242,7 @@ async function SetVideoTimestamp(){
             console.log("Set playtime", time);
         if (Math.abs(GetCurrentTime() - time) > 0.3)
             GetPlayer().seekTo(time, true);
+        safeToInsertNewData = true;
     }
 }
 
@@ -313,8 +315,12 @@ function GetTitle() {
     // let titleElement = primary_inner.children[1].children[4].children[0].children[0].children[3].children[0];
     // return titleElement.innerText;
 }
+var safeToInsertNewData = false;
 // This is not an api function because it is often used and you would need to pass in server, user and timestamp.
 async function InsertTimestamp2() {
+    if (!safeToInsertNewData)
+        return;
+    
     let timestamp = new Timestamp(GetVideoId(), GetCurrentTime(), GetDuration(), GetModifiedTime());
     if (SCRIPT_OPTIONS.debugInfo) {
         console.log("Try save, ",timestamp);   
