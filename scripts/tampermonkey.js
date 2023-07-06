@@ -137,8 +137,9 @@ async function InsertTimestamp(timestamp) {
             console.log("Insert bad response?", res);
     }
 }
-function CacheInsert(timestamp) {
-    // console.log("cache insert",timestamp)
+function CacheInsert(timestamp, calledByCacheMerge=false) {
+    // if(!calledByCacheMerge)
+    //     console.log("cache insert",timestamp)
     // Todo: validate timestamp
     for (let i = API_TIMESTAMP_CACHE.length - 1; i >= 0; i--) {
         let t = API_TIMESTAMP_CACHE[i];
@@ -152,7 +153,7 @@ function CacheInsert(timestamp) {
                     //     console.log("[Warning] Duration " + t.duration + " of '" + t.videoId + "' does not match inserted duration " + timestamp.duration);
                     t.duration = timestamp.duration;
                 }
-                if(API_OPTIONS.debugInfo)
+                if(API_OPTIONS.debugInfo && !calledByCacheMerge)
                     console.log("Replacing ",t);
                 t.time = timestamp.time;
                 t.lastModified = timestamp.lastModified;
@@ -165,7 +166,9 @@ function CacheInsert(timestamp) {
 
                 return;
             } else {
-                if (API_OPTIONS.debugWarning)
+                // Don't insert timestamp because it was aquired/modified at an older time than
+                // what is already in.
+                if (API_OPTIONS.debugWarning && !calledByCacheMerge)
                     console.log("[Warning] Skipping insert of '" + timestamp.videoId + "' (lastMod: " + t.lastModified + ", newMod: " + timestamp.lastModified + ")");
                 return;
             }
@@ -206,6 +209,9 @@ function CacheQuery(videoId) {
 }
 // Load and save
 function CacheMerge() {
+    // if(API_OPTIONS.debugInfo){
+    //     console.log("Enter CacheMerge");
+    // }
     let localName = "ytbTimestamps";
     let data = localStorage.getItem(localName);
 
@@ -226,7 +232,7 @@ function CacheMerge() {
     }
 
     for (let i = 0; i < timestamps.length; i++) {
-        CacheInsert(timestamps[i]);
+        CacheInsert(timestamps[i], true);
     }
 
     let content = "";
@@ -237,6 +243,9 @@ function CacheMerge() {
     // console.log("Cache merge", API_TIMESTAMP_CACHE);
     localStorage.setItem(localName, content);
     API_CACHE_CHANGED = false;
+    // if(API_OPTIONS.debugInfo){
+    //     console.log("Exit CacheMerge");
+    // }
 }
 var serverIsOnline = false;
 function IsServerOnline() {
@@ -303,6 +312,8 @@ function StartUpdate(){
             SCRIPT_OPTIONS.updateRate=1;
         updateRate = SCRIPT_OPTIONS.updateRate;
     }
+    if(updateInterval!=null)
+        clearInterval(updateInterval);
     updateInterval = setInterval(async ()=>{
         if(SCRIPT_OPTIONS.updateRate!=-1){
             let timestamps = await QueryModified(SCRIPT_OPTIONS.server,SCRIPT_OPTIONS.user);
@@ -324,18 +335,36 @@ function StartUpdate(){
         }
 
         if((SCRIPT_OPTIONS.updateRate==-1&&updateRate!=10)||(SCRIPT_OPTIONS.updateRate!=-1&&updateRate!=SCRIPT_OPTIONS.updateRate)){
-            clearInterval(updateInterval);
             StartUpdate();
         }
     },updateRate*1000);
 }
 
+var permanentSaveInterval = null;
+var permanentSaveRate = 0;
+function StartPermanentSave() {
+    if(SCRIPT_OPTIONS.permanentSaveRate<1)
+        SCRIPT_OPTIONS.permanentSaveRate=1;
+    permanentSaveRate = SCRIPT_OPTIONS.permanentSaveRate;
+    // console.log(SCRIPT_OPTIONS,permanentSaveRate);
+    if(permanentSaveInterval!=null)
+        clearInterval(permanentSaveInterval);
+    permanentSaveInterval = setInterval(() => {
+        // console.log(GetPageType());
+        if(SCRIPT_OPTIONS.permanentSaveRate!=-1){
+            if(GetPageType()=="watch"){
+                CacheMerge();
+            }
+        }
+        
+        if(permanentSaveRate!=SCRIPT_OPTIONS.permanentSaveRate){
+            StartPermanentSave();
+        }
+    },permanentSaveRate*1000);
+}
+
 var saveInterval = null;
 var saveRate = 0;
-// var saveDelay = 0;
-// var DelaySave(){
-//     saveDelay = 5;
-// }
 function StartSave() {
     if(SCRIPT_OPTIONS.saveRate==-1)
         saveRate = 10;
@@ -345,6 +374,8 @@ function StartSave() {
         saveRate = SCRIPT_OPTIONS.saveRate;
     }
     // console.log(SCRIPT_OPTIONS,saveRate);
+    if(saveInterval!=null)
+        clearInterval(saveInterval);
     saveInterval = setInterval(() => {
         // console.log(GetPageType());
         if(SCRIPT_OPTIONS.saveRate!=-1){
@@ -354,7 +385,6 @@ function StartSave() {
         }
         
         if((SCRIPT_OPTIONS.saveRate==-1&&saveRate!=10)||(SCRIPT_OPTIONS.saveRate!=-1&&saveRate!=SCRIPT_OPTIONS.saveRate)){
-            clearInterval(saveInterval);
             StartSave();
         }
     },saveRate*1000);
@@ -447,14 +477,16 @@ async function Initialize2() {
     if (location.pathname == "/watch")
         SetPageType("watch");
     
-    CacheMerge();
 
+    CacheMerge();
+    
     SetVideoTimestamp().catch(err => { console.log(err) });
     
     UpdateTimestamps().catch(err => { console.log(err)});
-
+    
     StartSave();
     StartUpdate();
+    StartPermanentSave(); // Continuous CacheMerge
 }
 // time in seconds since 2020
 function GetModifiedTime(){
@@ -484,12 +516,21 @@ function UrlOptions(href){
     }
     return object;
 }
+let setVideoTimeAttempts=0;
 async function SetVideoTimestamp(){
     var videoId = UrlOptions(location.href).v;
     if (!videoId) {
         console.log("SetVideoTimestamp bad id");
+        setVideoTimeAttempts++;
+        if(setVideoTimeAttempts<3){
+            setTimeout(SetVideoTimestamp, 500);
+        }
+        // NOTE: safeToInsertNewData SHOULD NOT be set to true here.
+        //   The videoId isn't working properly so inserting new data
+        //   could overwrite whatever we have.
         return;
     }
+    setVideoTimeAttempts = 0; // success!
 
     let timestamp = await QueryTimestamp(videoId);
     if (!timestamp) {
@@ -745,10 +786,13 @@ function Terminate() {
         // videos with less duration will not be saved, you usually don't want to save time in a music video.
         videoMinDuration: 60,
 
-        // how often time bars on thumbnails should be saved
+        // how often time bars on thumbnails should be updated
         updateRate: 2,
         
         disablePinging: true,
+        
+        // How often timestamps should be saved to local storage (or sent to server)
+        permanentSaveRate: 6,
         
         debugError: true,
         debugWarning: true,

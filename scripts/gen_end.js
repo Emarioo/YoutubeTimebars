@@ -12,10 +12,13 @@
         // videos with less duration will not be saved, you usually don't want to save time in a music video.
         videoMinDuration: 60,
 
-        // how often time bars on thumbnails should be saved
+        // how often time bars on thumbnails should be updated
         updateRate: 2,
         
         disablePinging: true,
+        
+        // How often timestamps should be saved to local storage (or sent to server)
+        permanentSaveRate: 6,
         
         debugError: true,
         debugWarning: true,

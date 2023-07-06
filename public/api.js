@@ -129,8 +129,9 @@ async function InsertTimestamp(timestamp) {
             console.log("Insert bad response?", res);
     }
 }
-function CacheInsert(timestamp) {
-    // console.log("cache insert",timestamp)
+function CacheInsert(timestamp, calledByCacheMerge=false) {
+    // if(!calledByCacheMerge)
+    //     console.log("cache insert",timestamp)
     // Todo: validate timestamp
     for (let i = API_TIMESTAMP_CACHE.length - 1; i >= 0; i--) {
         let t = API_TIMESTAMP_CACHE[i];
@@ -144,7 +145,7 @@ function CacheInsert(timestamp) {
                     //     console.log("[Warning] Duration " + t.duration + " of '" + t.videoId + "' does not match inserted duration " + timestamp.duration);
                     t.duration = timestamp.duration;
                 }
-                if(API_OPTIONS.debugInfo)
+                if(API_OPTIONS.debugInfo && !calledByCacheMerge)
                     console.log("Replacing ",t);
                 t.time = timestamp.time;
                 t.lastModified = timestamp.lastModified;
@@ -157,7 +158,9 @@ function CacheInsert(timestamp) {
 
                 return;
             } else {
-                if (API_OPTIONS.debugWarning)
+                // Don't insert timestamp because it was aquired/modified at an older time than
+                // what is already in.
+                if (API_OPTIONS.debugWarning && !calledByCacheMerge)
                     console.log("[Warning] Skipping insert of '" + timestamp.videoId + "' (lastMod: " + t.lastModified + ", newMod: " + timestamp.lastModified + ")");
                 return;
             }
@@ -198,6 +201,9 @@ function CacheQuery(videoId) {
 }
 // Load and save
 function CacheMerge() {
+    // if(API_OPTIONS.debugInfo){
+    //     console.log("Enter CacheMerge");
+    // }
     let localName = "ytbTimestamps";
     let data = localStorage.getItem(localName);
 
@@ -218,7 +224,7 @@ function CacheMerge() {
     }
 
     for (let i = 0; i < timestamps.length; i++) {
-        CacheInsert(timestamps[i]);
+        CacheInsert(timestamps[i], true);
     }
 
     let content = "";
@@ -229,6 +235,9 @@ function CacheMerge() {
     // console.log("Cache merge", API_TIMESTAMP_CACHE);
     localStorage.setItem(localName, content);
     API_CACHE_CHANGED = false;
+    // if(API_OPTIONS.debugInfo){
+    //     console.log("Exit CacheMerge");
+    // }
 }
 var serverIsOnline = false;
 function IsServerOnline() {

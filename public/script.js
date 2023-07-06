@@ -12,6 +12,8 @@ function StartUpdate(){
             SCRIPT_OPTIONS.updateRate=1;
         updateRate = SCRIPT_OPTIONS.updateRate;
     }
+    if(updateInterval!=null)
+        clearInterval(updateInterval);
     updateInterval = setInterval(async ()=>{
         if(SCRIPT_OPTIONS.updateRate!=-1){
             let timestamps = await QueryModified(SCRIPT_OPTIONS.server,SCRIPT_OPTIONS.user);
@@ -33,18 +35,36 @@ function StartUpdate(){
         }
 
         if((SCRIPT_OPTIONS.updateRate==-1&&updateRate!=10)||(SCRIPT_OPTIONS.updateRate!=-1&&updateRate!=SCRIPT_OPTIONS.updateRate)){
-            clearInterval(updateInterval);
             StartUpdate();
         }
     },updateRate*1000);
 }
 
+var permanentSaveInterval = null;
+var permanentSaveRate = 0;
+function StartPermanentSave() {
+    if(SCRIPT_OPTIONS.permanentSaveRate<1)
+        SCRIPT_OPTIONS.permanentSaveRate=1;
+    permanentSaveRate = SCRIPT_OPTIONS.permanentSaveRate;
+    // console.log(SCRIPT_OPTIONS,permanentSaveRate);
+    if(permanentSaveInterval!=null)
+        clearInterval(permanentSaveInterval);
+    permanentSaveInterval = setInterval(() => {
+        // console.log(GetPageType());
+        if(SCRIPT_OPTIONS.permanentSaveRate!=-1){
+            if(GetPageType()=="watch"){
+                CacheMerge();
+            }
+        }
+        
+        if(permanentSaveRate!=SCRIPT_OPTIONS.permanentSaveRate){
+            StartPermanentSave();
+        }
+    },permanentSaveRate*1000);
+}
+
 var saveInterval = null;
 var saveRate = 0;
-// var saveDelay = 0;
-// var DelaySave(){
-//     saveDelay = 5;
-// }
 function StartSave() {
     if(SCRIPT_OPTIONS.saveRate==-1)
         saveRate = 10;
@@ -54,6 +74,8 @@ function StartSave() {
         saveRate = SCRIPT_OPTIONS.saveRate;
     }
     // console.log(SCRIPT_OPTIONS,saveRate);
+    if(saveInterval!=null)
+        clearInterval(saveInterval);
     saveInterval = setInterval(() => {
         // console.log(GetPageType());
         if(SCRIPT_OPTIONS.saveRate!=-1){
@@ -63,7 +85,6 @@ function StartSave() {
         }
         
         if((SCRIPT_OPTIONS.saveRate==-1&&saveRate!=10)||(SCRIPT_OPTIONS.saveRate!=-1&&saveRate!=SCRIPT_OPTIONS.saveRate)){
-            clearInterval(saveInterval);
             StartSave();
         }
     },saveRate*1000);
@@ -156,14 +177,16 @@ async function Initialize2() {
     if (location.pathname == "/watch")
         SetPageType("watch");
     
-    CacheMerge();
 
+    CacheMerge();
+    
     SetVideoTimestamp().catch(err => { console.log(err) });
     
     UpdateTimestamps().catch(err => { console.log(err)});
-
+    
     StartSave();
     StartUpdate();
+    StartPermanentSave(); // Continuous CacheMerge
 }
 // time in seconds since 2020
 function GetModifiedTime(){
@@ -193,12 +216,21 @@ function UrlOptions(href){
     }
     return object;
 }
+let setVideoTimeAttempts=0;
 async function SetVideoTimestamp(){
     var videoId = UrlOptions(location.href).v;
     if (!videoId) {
         console.log("SetVideoTimestamp bad id");
+        setVideoTimeAttempts++;
+        if(setVideoTimeAttempts<3){
+            setTimeout(SetVideoTimestamp, 500);
+        }
+        // NOTE: safeToInsertNewData SHOULD NOT be set to true here.
+        //   The videoId isn't working properly so inserting new data
+        //   could overwrite whatever we have.
         return;
     }
+    setVideoTimeAttempts = 0; // success!
 
     let timestamp = await QueryTimestamp(videoId);
     if (!timestamp) {
