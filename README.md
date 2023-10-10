@@ -1,7 +1,7 @@
 # Youtube Time bars!
 Time bars for youtube!
-Note that you need to setup a server for this to work.
-You can setup one locally. More info below.
+Time bars are saved locally using localStorage. 
+In the future you will be able setup a server to synchronize time bars across computers.
 
 ## Warning
 I am not sure how well the security on the scripts hold up. Could be really bad.
